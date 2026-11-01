@@ -1,0 +1,125 @@
+---
+title: "DATASCI 220 Group Project - Exploration of data"
+author: "Elijah Coulanges, Eric Zhao, Harry Han, Ryan Wang, Songjie Pu"
+date: "`r format(Sys.time(), '%e %B %Y')`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(ggplot2)
+```
+
+
+---
+
+
+# Exploration of Relationships
+
+To try out plotting lines and beginning to investigate the relationships between variables, we will be using data from one of the class project datasets!
+
+As a group, you will need to once again use the dataset for the class project that your group chose (look back at previous labs or the list on Canvas to remember which dataset you are working with). Read in this dataset, and work together with your group to complete this exercise. *REMEMBER: YOU MAY BE ASKED TO PRESENT YOUR WORK IN PROGRESS ANYTIME IN CLASS*
+
+
+a) Read in and explore the data in your group's dataset. (think: str(), head(), tail(), etc.)
+```{r}
+house_sales <- read.csv("kc_house_data.csv")
+str(house_sales)
+```
+
+b) For this exercise, you will need to identify several variables you will be working with.
+
+*Outcome Variable (must be continuous)*: price
+
+*2 Predictor Variables (continuous)*: sqft_living & sqft_lot
+
+*1 Predictor Variable (categorical)*: waterfront
+
+
+---
+
+c) Fit a simple linear regression model of your outcome variable and only 1 of your continuous predictor variables (predictor 1).
+```{r}
+simple_linear <- lm(price ~ sqft_living, data = house_sales)
+summary(simple_linear)
+```
+
+d) Visualize the relationship between these variables with an appropriately labeled plot (title, axes labels, etc.).
+```{r}
+ggplot(house_sales, aes(x = sqft_living, y = price)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE, color = "blue") +
+  labs(title = "Least Squares Regression Line for price vs sqft_living")
+```
+
+e) *What does the slope tell you about the relationship between your two variables?*
+Answer: 
+
+There is a positive correlation between sqft_living and price. As sqft_living increases, we expect the price of the property to increase as well.
+
+---
+
+f) Now, add your second continuous predictor variable (predictor 2) to your model, fit the linear regression, and investigate the regression output.
+```{r}
+linear_2 <- lm(price ~ sqft_living + sqft_lot, data = house_sales)
+summary(linear_2)
+```
+
+g) *Compare the slope for your first predictor (predictor 1) between this model and the simple model. Did it change? Why might that happen?*
+Answer:
+
+In the simple model, the slope of sqft_living used to be 280.624. In this new model with predictor 2 added, the slope is now 282.9. This change might be because now we're taking sqft_lot into consideration as well, where part of the variation in price is now being explained by predictor 2. As a result, for every unit that sqft_living changes, we expect the change in price to be different - meaning that slope changes.
+
+---
+
+h) Now, add in your categorical variable, which you identified previously, to your model. *You should exclude ONE of your continuous predictor variables from this model.* Fit a linear regression model with this information.
+```{r}
+house_sales$waterfront <- factor(house_sales$waterfront)  # make waterfront categorical
+
+linear_3 <- lm(price ~ sqft_living + waterfront, data = house_sales)
+summary(linear_3)
+```
+
+i) Now plot the parallel lines for this model with appropriate labels, using predictions as outlined in the lecture. (Parallel Lines Model)
+
+```{r}
+grid_parallel <- expand.grid(
+  sqft_living = seq(min(house_sales$sqft_living), max(house_sales$sqft_living), length.out = 50),
+  waterfront = levels(house_sales$waterfront)
+)
+
+grid_parallel$price_pred <- predict(linear_3, newdata = grid_parallel)
+```
+
+We will visualize this by plotting parallel lines by cylinder group.
+```{r}
+ggplot(house_sales, aes(x = sqft_living, y = price, color = waterfront)) +
+  geom_point() +
+  geom_line(data = grid_parallel, aes(y = price_pred, color = waterfront), size = 1) +
+  labs(title = "Parallel Lines Model (Additive Effect of waterfront)",
+       x = "sqft_living", y = "price") +
+  theme_minimal()
+```
+
+---
+
+j) Now, allow the slope to differ by the groups/levels of your categorical variable. Fit a linear regression model with this interaction, as we did in lecture.
+
+```{r}
+linear_4 <- lm(price ~ sqft_living * waterfront, data = house_sales)
+summary(linear_4)
+```
+
+
+
+k) Visualize the relationship of the interaction with an appropriately labeled plot. (think: Not-Necessarily Parallel Lines Model)
+```{r}
+ggplot(house_sales, aes(x = sqft_living, y = price, color = waterfront)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(title = "Non-Parallel Lines: Interaction Between price and sqft_living",
+       x = "sqft_living", y = "price")
+```
+
+
