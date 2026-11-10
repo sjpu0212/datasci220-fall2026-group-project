@@ -7,73 +7,169 @@ output: pdf_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-library(dplyr)
-library(ggplot2)
 ```
 
+------------------------------------------------------------------------
 
----
+# Research Question:
 
+# Dependent & Independent Variables:
 
-# Exploration of Relationships
+Dependent Variable: price
 
-To try out plotting lines and beginning to investigate the relationships between variables, we will be using data from one of the class project datasets!
+Independent Variable 1 (Continuous): sqft_living
 
-As a group, you will need to once again use the dataset for the class project that your group chose (look back at previous labs or the list on Canvas to remember which dataset you are working with). Read in this dataset, and work together with your group to complete this exercise. *REMEMBER: YOU MAY BE ASKED TO PRESENT YOUR WORK IN PROGRESS ANYTIME IN CLASS*
+Independent Variable 2 (Categorical): waterfront
 
+Independent Variable 3 (Discrete?): bedrooms
 
-a) Read in and explore the data in your group's dataset. (think: str(), head(), tail(), etc.)
+# Data Preparation
+
 ```{r}
+library(dplyr)
+library(ggplot2)
+library(modelr)
+
 house_sales <- read.csv("kc_house_data.csv")
+
+house_sales$waterfront <- factor(house_sales$waterfront)
+
 str(house_sales)
 ```
 
-b) For this exercise, you will need to identify several variables you will be working with.
+# Model 1 - Parallel-Lines Model (sqft_living, waterfront, and bedrooms)
 
-*Outcome Variable (must be continuous)*: price
+$$
+\text{price}_i = \beta_0 + \beta_1\,\text{sqft_living}_i + \beta_2\,\text{waterfront}_i + \beta_3\,\text{bedrooms}_i + \varepsilon_i .
+$$
 
-*2 Predictor Variables (continuous)*: sqft_living & sqft_lot
-
-*1 Predictor Variable (categorical)*: waterfront
-
-
----
-
-c) Fit a simple linear regression model of your outcome variable and only 1 of your continuous predictor variables (predictor 1).
 ```{r}
-simple_linear <- lm(price ~ sqft_living, data = house_sales)
-summary(simple_linear)
+model1 <- lm(price ~ sqft_living + waterfront + bedrooms, data = house_sales)
+summary(model1)
 ```
 
-d) Visualize the relationship between these variables with an appropriately labeled plot (title, axes labels, etc.).
+## Visualization
+
 ```{r}
-ggplot(house_sales, aes(x = sqft_living, y = price)) +
+grid_parallel <- expand.grid(
+  sqft_living = seq(min(house_sales$sqft_living), max(house_sales$sqft_living), length.out = 50),
+  waterfront  = levels(house_sales$waterfront),
+  bedrooms    = median(house_sales$bedrooms)
+)
+grid_parallel$price_pred <- predict(model1, newdata = grid_parallel)
+```
+
+```{r}
+ggplot(house_sales, aes(x = sqft_living, y = price, color = waterfront)) +
+  geom_point(alpha = 0.3) +
+  geom_line(data = grid_parallel, aes(y = price_pred, color = waterfront), linewidth = 1) +
+  labs(title = paste0("Parallel Lines Model (bedrooms held at ", median(house_sales$bedrooms), ")"),
+       x = "sqft_living", y = "price") +
+  theme_minimal()
+```
+
+```{r, fig.height = 4}
+# (2) one panel per bedroom count (2, 3, 4 bedrooms)
+bed_values <- c(2, 3, 4)
+
+grid_bed <- expand.grid(
+  sqft_living = seq(min(house_sales$sqft_living), max(house_sales$sqft_living), length.out = 50),
+  waterfront  = levels(house_sales$waterfront),
+  bedrooms    = bed_values
+)
+grid_bed$price_pred <- predict(model1, newdata = grid_bed)
+
+ggplot(filter(house_sales, bedrooms %in% bed_values),
+       aes(x = sqft_living, y = price, color = waterfront)) +
+  geom_point(alpha = 0.3) +
+  geom_line(data = grid_bed, aes(y = price_pred), linewidth = 1) +
+  facet_wrap(~ bedrooms, labeller = label_both) +
+  labs(title = "Parallel Lines Model by Number of Bedrooms",
+       x = "sqft_living", y = "price") +
+  theme_minimal()
+```
+
+## Diagnostics
+
+### Mean Zero and Homoscedasticity
+
+#### Residuals vs Fitted plot
+
+```{r}
+# Residuals vs Fitted
+plot(model1, which = 1)
+```
+
+Based on the Residuals vs. Fitted graph, it seems that the assumption of Mean zero-errors is generally fulfilled, as the red line is centered generally at zero, except at the far ends of the graph where there's very few data points and potential outliers.
+
+#### Scale-Location plot
+
+```{r}
+# Scale-Location plot
+plot(model1, which = 3)
+```
+
+The Scale-Location graph, along with the Residuals vs. Fitted Graph, suggests that the variance is not constant across X, as we see an upward trend in the Scale-Location plot. In other words, our data does not fulfill the assumption of homoscedasticity.
+
+### Normality
+
+```{r}
+model1_withres <- house_sales %>% 
+  add_residuals(model1)
+qqnorm(model1_withres$resid, main = "Normal Q–Q Plot")
+qqline(model1_withres$resid, col = "blue", lwd = 2, lty = 2)
+```
+
+```{r}
+hist(model1_withres$resid, prob = TRUE, breaks = 50, col = "lightcoral",
+main = "Residual Histogram", xlab = "Residuals")
+grid <- sort(model1_withres$resid)
+lines(grid, dnorm(grid, mean = mean(model1_withres$resid),
+sd = sd(model1_withres$resid)),
+col = "maroon", lwd = 2)
+```
+
+Given the Q-Q Plot and residual histogram, it seems that the points does not follow the diagonal line or the normal distribution closely, suggesting that the assumption of normality is not fulfilled.
+
+## Testing & Confidence Interval (Elijah)
+
+# Model 2 - Not-Necessarily Parallel Lines?
+
+## Visualization
+
+```{r}
+ggplot(house_sales, aes(x = sqft_living, y = price, color = waterfront)) +
   geom_point() +
-  geom_smooth(method = "lm", se = FALSE, color = "blue") +
+  geom_smooth(method = "lm", se = FALSE) +
   labs(title = "Least Squares Regression Line for price vs sqft_living")
 ```
 
-e) *What does the slope tell you about the relationship between your two variables?*
-Answer: 
+
+
+
+# Other stuff from before - might be useful?
+
+e)  *What does the slope tell you about the relationship between your two variables?* Answer:
 
 There is a positive correlation between sqft_living and price. As sqft_living increases, we expect the price of the property to increase as well.
 
----
+------------------------------------------------------------------------
 
-f) Now, add your second continuous predictor variable (predictor 2) to your model, fit the linear regression, and investigate the regression output.
+f)  Now, add your second continuous predictor variable (predictor 2) to your model, fit the linear regression, and investigate the regression output.
+
 ```{r}
 linear_2 <- lm(price ~ sqft_living + sqft_lot, data = house_sales)
 summary(linear_2)
 ```
 
-g) *Compare the slope for your first predictor (predictor 1) between this model and the simple model. Did it change? Why might that happen?*
-Answer:
+g)  *Compare the slope for your first predictor (predictor 1) between this model and the simple model. Did it change? Why might that happen?* Answer:
 
 In the simple model, the slope of sqft_living used to be 280.624. In this new model with predictor 2 added, the slope is now 282.9. This change might be because now we're taking sqft_lot into consideration as well, where part of the variation in price is now being explained by predictor 2. As a result, for every unit that sqft_living changes, we expect the change in price to be different - meaning that slope changes.
 
----
+------------------------------------------------------------------------
 
-h) Now, add in your categorical variable, which you identified previously, to your model. *You should exclude ONE of your continuous predictor variables from this model.* Fit a linear regression model with this information.
+h)  Now, add in your categorical variable, which you identified previously, to your model. *You should exclude ONE of your continuous predictor variables from this model.* Fit a linear regression model with this information.
+
 ```{r}
 house_sales$waterfront <- factor(house_sales$waterfront)  # make waterfront categorical
 
@@ -81,7 +177,7 @@ linear_3 <- lm(price ~ sqft_living + waterfront, data = house_sales)
 summary(linear_3)
 ```
 
-i) Now plot the parallel lines for this model with appropriate labels, using predictions as outlined in the lecture. (Parallel Lines Model)
+i)  Now plot the parallel lines for this model with appropriate labels, using predictions as outlined in the lecture. (Parallel Lines Model)
 
 ```{r}
 grid_parallel <- expand.grid(
@@ -93,6 +189,7 @@ grid_parallel$price_pred <- predict(linear_3, newdata = grid_parallel)
 ```
 
 We will visualize this by plotting parallel lines by cylinder group.
+
 ```{r}
 ggplot(house_sales, aes(x = sqft_living, y = price, color = waterfront)) +
   geom_point() +
@@ -102,18 +199,17 @@ ggplot(house_sales, aes(x = sqft_living, y = price, color = waterfront)) +
   theme_minimal()
 ```
 
----
+------------------------------------------------------------------------
 
-j) Now, allow the slope to differ by the groups/levels of your categorical variable. Fit a linear regression model with this interaction, as we did in lecture.
+j)  Now, allow the slope to differ by the groups/levels of your categorical variable. Fit a linear regression model with this interaction, as we did in lecture.
 
 ```{r}
 linear_4 <- lm(price ~ sqft_living * waterfront, data = house_sales)
 summary(linear_4)
 ```
 
+k)  Visualize the relationship of the interaction with an appropriately labeled plot. (think: Not-Necessarily Parallel Lines Model)
 
-
-k) Visualize the relationship of the interaction with an appropriately labeled plot. (think: Not-Necessarily Parallel Lines Model)
 ```{r}
 ggplot(house_sales, aes(x = sqft_living, y = price, color = waterfront)) +
   geom_point() +
@@ -121,5 +217,3 @@ ggplot(house_sales, aes(x = sqft_living, y = price, color = waterfront)) +
   labs(title = "Non-Parallel Lines: Interaction Between price and sqft_living",
        x = "sqft_living", y = "price")
 ```
-
-
