@@ -40,7 +40,7 @@ str(house_sales)
 # Model 1 - Parallel-Lines Model (sqft_living, waterfront, and bedrooms)
 
 $$
-\text{price}_i = \beta_0 + \beta_1\,\text{sqft\_living}_i + \beta_2\,\text{waterfront}_i + \beta_3\,\text{bedrooms}_i + \varepsilon_i .
+\text{price}_i = \beta_0 + \beta_1\,\text{sqft\_living}_i + \beta_2\,\text{waterfront}_i + \beta_3\,\text{bedrooms}_i + \varepsilon_i
 $$
 
 ```{r}
@@ -70,7 +70,7 @@ ggplot(house_sales, aes(x = sqft_living, y = price, color = waterfront)) +
 
 ```{r, fig.height = 4}
 # (2) one panel per bedroom count (2, 3, 4 bedrooms)
-bed_values <- c(2, 3, 4)
+bed_values <- unique(house_sales$bedrooms)
 
 grid_bed <- expand.grid(
   sqft_living = seq(min(house_sales$sqft_living), max(house_sales$sqft_living), length.out = 50),
@@ -130,6 +130,16 @@ col = "maroon", lwd = 2)
 ```
 
 Given the Q-Q Plot and residual histogram, it seems that the points does not follow the diagonal line or the normal distribution closely, suggesting that the assumption of normality is not fulfilled.
+
+### Outliers
+
+```{r}
+plot(model1, which = 4)
+```
+
+```{r}
+plot(model1, which = 5)
+```
 
 ## Testing & Confidence Interval
 
