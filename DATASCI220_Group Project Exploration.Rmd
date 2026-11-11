@@ -40,7 +40,7 @@ str(house_sales)
 # Model 1 - Parallel-Lines Model (sqft_living, waterfront, and bedrooms)
 
 $$
-\text{price}_i = \beta_0 + \beta_1\,\text{sqft_living}_i + \beta_2\,\text{waterfront}_i + \beta_3\,\text{bedrooms}_i + \varepsilon_i .
+\text{price}_i = \beta_0 + \beta_1\,\text{sqft\_living}_i + \beta_2\,\text{waterfront}_i + \beta_3\,\text{bedrooms}_i + \varepsilon_i .
 $$
 
 ```{r}
@@ -131,11 +131,113 @@ col = "maroon", lwd = 2)
 
 Given the Q-Q Plot and residual histogram, it seems that the points does not follow the diagonal line or the normal distribution closely, suggesting that the assumption of normality is not fulfilled.
 
-## Testing & Confidence Interval (Elijah)
+## Testing & Confidence Interval
+
+### Summary
+
+```{r}
+aggregate(price ~ bedrooms, data = house_sales, FUN = mean)
+```
+
+### Visualization
+
+```{r}
+house_sales$bedrooms <- factor(house_sales$bedrooms)
+ggplot(house_sales,
+       aes(x = bedrooms, y = price, fill = bedrooms)) +
+  geom_boxplot(alpha = 0.6) +
+  ggtitle("Price by Bedrooms") +
+  xlab("# of Bedrooms") +
+  ylab("Price") + 
+  theme_minimal()
+```
+### ANOVA
+
+```{r}
+anova(model1)
+```
+While the ANOVA has significantly low p-values for all coefficients, the diagnostics earlier tell us that assumptions for the test are not met, so other, non-parametric tests, should be used to make conclusions about the difference in mean among groups.
+
+### Confidence Intervals
+
+#### 1 Bedroom vs 2 Bedrooms
+
+```{r}
+set.seed(20)
+B <- 10000
+boot_meandiffs <- numeric(B)
+n <- nrow(house_sales)
+
+for (i in 1:B) {
+boot_ids <- sample(x = 1:n, size = 5000, replace = TRUE)
+samp <- house_sales[boot_ids, ]
+mean_house_sales_1 <- mean(as.integer(filter(samp, bedrooms == 1)$price))
+mean_house_sales_2 <- mean(as.integer(filter(samp, bedrooms == 2)$price))
+boot_meandiffs[i] <- mean_house_sales_1 - mean_house_sales_2
+}
+
+head(boot_meandiffs)
+```
+
+```{r}
+CI_boot_12 <- quantile(boot_meandiffs, c(0.025, 0.975))
+CI_boot_12
+```
+
+#### 1 Bedroom vs 3 Bedrooms
+
+```{r}
+set.seed(20)
+B <- 10000
+boot_meandiffs2 <- numeric(B)
+n <- nrow(house_sales)
+
+for (i in 1:B) {
+boot_ids <- sample(x = 1:n, size = 5000, replace = TRUE)
+samp <- house_sales[boot_ids, ]
+mean_house_sales_1 <- mean(as.integer(filter(samp, bedrooms == 1)$price))
+mean_house_sales_3 <- mean(as.integer(filter(samp, bedrooms == 3)$price))
+boot_meandiffs2[i] <- mean_house_sales_1 - mean_house_sales_3
+}
+
+head(boot_meandiffs2)
+```
+
+```{r}
+CI_boot_13 <- quantile(boot_meandiffs2, c(0.025, 0.975))
+CI_boot_13
+```
+
+#### 2 Bedroom vs 3 Bedrooms
+
+```{r}
+set.seed(20)
+B <- 10000
+boot_meandiffs3 <- numeric(B)
+n <- nrow(house_sales)
+
+for (i in 1:B) {
+boot_ids <- sample(x = 1:n, size = 5000, replace = TRUE)
+samp <- house_sales[boot_ids, ]
+mean_house_sales_2 <- mean(as.integer(filter(samp, bedrooms == 2)$price))
+mean_house_sales_3 <- mean(as.integer(filter(samp, bedrooms == 3)$price))
+boot_meandiffs3[i] <- mean_house_sales_2 - mean_house_sales_3
+}
+
+head(boot_meandiffs3)
+```
+
+```{r}
+CI_boot_23 <- quantile(boot_meandiffs3, c(0.025, 0.975))
+CI_boot_23
+```
 
 ## Model 2 - Not-Necessarily Parallel Lines?
+
+```{r}
 model2<-lm(price ~ sqft_living + waterfront + bedrooms+ sqft_living*waterfront, data = house_sales)
 summary(model2)
+```
 
 ## Visualization
 
