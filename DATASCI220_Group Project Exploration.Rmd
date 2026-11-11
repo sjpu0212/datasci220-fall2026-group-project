@@ -133,7 +133,9 @@ Given the Q-Q Plot and residual histogram, it seems that the points does not fol
 
 ## Testing & Confidence Interval (Elijah)
 
-# Model 2 - Not-Necessarily Parallel Lines?
+## Model 2 - Not-Necessarily Parallel Lines?
+model2<-lm(price ~ sqft_living + waterfront + bedrooms+ sqft_living*waterfront, data = house_sales)
+summary(model2)
 
 ## Visualization
 
@@ -143,9 +145,43 @@ ggplot(house_sales, aes(x = sqft_living, y = price, color = waterfront)) +
   geom_smooth(method = "lm", se = FALSE) +
   labs(title = "Least Squares Regression Line for price vs sqft_living")
 ```
+## Diagnostics
 
+### Mean Zero and Homoscedasticity
 
+#### Residuals vs Fitted plot
 
+```{r}
+# Residuals vs Fitted
+plot(model2, which = 1)
+```
+Looking at the residuals vs fitted plot, the red line is not centered at 0, it is a upward opening shape with two ends going upward. Most of the data points centered at a small range, that is why the line goes very high at the two ends where there are only few data points.
+
+#### Scale-Location plot
+
+```{r}
+# Scale-Location plot
+plot(model2, which = 3)
+```
+Looking at the scale-location plot, it is clear that the variance differs a lot across the dataset. The red line shows a clear up-going trend. This suggests that our data does not fulfill the homoscedasticity assumption.
+
+### Normality
+
+```{r}
+model2_withres <- house_sales %>% 
+  add_residuals(model2)
+qqnorm(model2_withres$resid, main = "Normal Q–Q Plot")
+qqline(model2_withres$resid, col = "blue", lwd = 2, lty = 2)
+```
+```{r}
+hist(model2_withres$resid, prob = TRUE, breaks = 50, col = "orange",
+     main = "Residual Histogram", xlab = "Residuals")
+grid <- sort(model2_withres$resid)
+lines(grid, dnorm(grid, mean = mean(model2_withres$resid),
+                  sd = sd(model2_withres$resid)),
+      col = "orange", lwd = 2)
+```
+From the Q-Q plot, we can see a similar trend as the parallel line model, the points does not align with the line, so normality is not true. Residual histogram shows a very close to normal distribution shape, but there are many outliers that led to no normality.
 
 # Other stuff from before - might be useful?
 
