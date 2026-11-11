@@ -242,7 +242,7 @@ CI_boot_23 <- quantile(boot_meandiffs3, c(0.025, 0.975))
 CI_boot_23
 ```
 
-## Model 2 - Not-Necessarily Parallel Lines?
+# Model 2 - Not-Necessarily Parallel Lines?
 
 ```{r}
 model2<-lm(price ~ sqft_living + waterfront + bedrooms+ sqft_living*waterfront, data = house_sales)
@@ -294,6 +294,47 @@ lines(grid, dnorm(grid, mean = mean(model2_withres$resid),
       col = "orange", lwd = 2)
 ```
 From the Q-Q plot, we can see a similar trend as the parallel line model, the points does not align with the line, so normality is not true. Residual histogram shows a very close to normal distribution shape, but there are many outliers that led to no normality.
+
+## Testing & Confidence Interval
+
+### Bootstrap Confidence Interval
+
+```{r}
+set.seed(20)
+B <- 10000
+boot_interactions <- numeric(B)
+n <- nrow(house_sales)
+
+for (i in 1:B) {
+  boot_ids <- sample(x = 1:n, size = n, replace = TRUE)
+  samp <- house_sales[boot_ids, ]
+
+  boot_model2 <- lm(
+    price ~ sqft_living * waterfront + bedrooms,
+    data = samp
+  )
+
+  boot_interactions[i] <- coef(boot_model2)["sqft_living:waterfront1"]
+}
+
+head(boot_interactions)
+```
+
+```{r}
+CI_boot_interaction <- quantile(boot_interactions, c(0.025, 0.975))
+CI_boot_interaction
+```
+
+### Testing the Interaction
+
+H0: The interaction coefficient equals 0.
+
+HA: The interaction coefficient does not equal 0.
+
+```{r}
+reject_H0 <- CI_boot_interaction[1] > 0 | CI_boot_interaction[2] < 0
+reject_H0
+```
 
 # Other stuff from before - might be useful?
 
